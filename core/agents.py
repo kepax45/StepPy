@@ -116,6 +116,7 @@ class BranchAndBoundAgent(Agent):
             if pos == goal:
                 best_goal_cost = cost
                 best_path = path
+                return Path(best_path)
             else:
                 for neighbor in grid.neighbors4(pos[0], pos[1]):
                     if neighbor.pos in path:
@@ -131,9 +132,46 @@ class AStar(Agent):
 
     def __init__(self):
         super().__init__("AStar")
-
+    @staticmethod
+    def heuristic(start: tuple[int, int], goal: tuple[int, int]):
+        return abs(start[0] - goal[0]) + abs(start[1] - goal[1])
     def find_path(self, grid: Grid, start: tuple[int, int], goal: tuple[int, int]) -> Path:
-        raise NotImplementedError
+        leaf_nodes = []
+        heapq.heapify(leaf_nodes)
+        popped = start
+        best_path = None
+        INF = 2 ** 31 - 1
+        best_goal_cost = INF
+        best_costs = [[INF for _ in range(grid.cols)] for _ in range(grid.rows)]
+
+        for neighbor in grid.neighbors4(start[0], start[1]):
+            heapq.heappush(leaf_nodes, (neighbor.cost + AStar.heuristic(neighbor.pos, goal), neighbor.cost,  2, neighbor.pos, [start, neighbor.pos]))
+
+        while (leaf_nodes):
+            data = heapq.heappop(leaf_nodes)
+            pos = data[3]
+            cost = data[1]
+            path = data[4]
+            if cost < best_costs[pos[0]][pos[1]]:
+                best_costs[pos[0]][pos[1]] = cost
+            else:
+                continue
+            if cost >= best_goal_cost:
+                continue
+            if pos == goal:
+                best_goal_cost = cost
+                best_path = path
+                return Path(best_path)
+            else:
+                for neighbor in grid.neighbors4(pos[0], pos[1]):
+                    if neighbor.pos in path:
+                        continue
+                    if cost + neighbor.cost >= best_costs[neighbor.row][neighbor.col]:
+                        continue
+                    new_path = path.copy()
+                    new_path.append(neighbor.pos)
+                    heapq.heappush(leaf_nodes, (cost + neighbor.cost + AStar.heuristic(neighbor.pos, goal), cost + neighbor.cost , len(new_path), neighbor.pos, new_path))
+        return Path(best_path)
 
 
 AGENTS: dict[str, Callable[[], Agent]] = {
